@@ -1,0 +1,60 @@
+services:
+  # 模式 1：常駐型雙向 JSON-RPC Agent Harness Server (`codex-app-server`)
+  # 外部 Orchestrator 可透過 WebSocket (ws://localhost:8080) 建立多輪對話、接收串流事件、控制審批與動態工具
+  codex-app-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: codex-harness:latest
+    container_name: codex-harness-app-server
+    environment:
+      - HARNESS_MODE=app-server
+      - HARNESS_LISTEN_URL=ws://0.0.0.0:8080
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - CODEX_API_KEY=${CODEX_API_KEY:-}
+      - CODEX_HOME=/home/codex/.codex
+    ports:
+      - "${HARNESS_PORT:-8080}:8080"
+    volumes:
+      - ${WORKSPACE_DIR:-.}:/workspace
+      - codex-home:/home/codex/.codex
+    security_opt:
+      - seccomp:unconfined
+    working_dir: /workspace
+    restart: unless-stopped
+
+  # 模式 2：單次 / 批次 JSONL 串流任務執行器 (`codex-exec`)
+  # 透過 `docker compose run --rm codex-exec --json --full-auto "你的任務指令"` 調用
+  codex-exec:
+    image: codex-harness:latest
+    profiles: ["cli"]
+    environment:
+      - HARNESS_MODE=exec
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - CODEX_API_KEY=${CODEX_API_KEY:-}
+      - CODEX_HOME=/home/codex/.codex
+    volumes:
+      - ${WORKSPACE_DIR:-.}:/workspace
+      - codex-home:/home/codex/.codex
+    security_opt:
+      - seccomp:unconfined
+    working_dir: /workspace
+
+  # 模式 3：輕量級遠端環境執行器 (`exec-server`)
+  # 若外部已有 Harness，可將此容器作為遠端 PTY + 檔案系統 Sandbox (CODEX_EXEC_SERVER_URL=ws://localhost:31987)
+  codex-exec-server:
+    image: codex-harness:latest
+    profiles: ["exec-server"]
+    environment:
+      - HARNESS_MODE=exec-server
+      - EXEC_SERVER_LISTEN_URL=ws://0.0.0.0:31987
+    ports:
+      - "${EXEC_SERVER_PORT:-31987}:31987"
+    volumes:
+      - ${WORKSPACE_DIR:-.}:/workspace
+    security_opt:
+      - seccomp:unconfined
+    working_dir: /workspace
+
+volumes:
+  codex-home:

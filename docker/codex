@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Headless Codex Harness unified CLI dispatcher.
+# Routes `codex exec`, `codex app-server`, `codex exec-server` to their dedicated
+# headless binaries while defaulting bare invocations to `codex-exec`.
+set -euo pipefail
+
+case "${1:-}" in
+  exec|e)
+    shift
+    exec /usr/local/bin/codex-exec "$@"
+    ;;
+  app-server)
+    shift
+    exec /usr/local/bin/codex-app-server "$@"
+    ;;
+  exec-server)
+    shift
+    exec /usr/local/bin/exec-server "$@"
+    ;;
+  execpolicy)
+    shift
+    exec /usr/local/bin/codex-execpolicy "$@"
+    ;;
+  responses-api-proxy)
+    shift
+    exec /usr/local/bin/codex-responses-api-proxy "$@"
+    ;;
+  *)
+    exec /usr/local/bin/codex-exec "$@"
+    ;;
+esac
